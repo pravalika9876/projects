@@ -1,0 +1,159 @@
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>E-commerce website</title>
+  <style>
+    /* (Keep all your existing styles here as provided) */
+  </style>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+
+<h1>🛒 E-commerce website</h1>
+
+<div class="controls">
+  <input type="text" id="search-bar" placeholder="Search products..." oninput="filterProducts()" />
+  <select id="category-filter" onchange="filterProducts()">
+    <option value="all">All Categories</option>
+    <option value="shoes">Shoes</option>
+    <option value="mobile">Mobile</option>
+    <option value="tv">TV</option>
+    <option value="ac">AC</option>
+    <option value="fridge">Refrigerator</option>
+    <option value="cooler">Cooler</option>
+    <option value="speakers">Speakers</option>
+    <option value="headphones">Headphones</option>
+  </select>
+  <select id="sort-by" onchange="sortProducts()">
+    <option value="low-high">Price: Low to High</option>
+    <option value="high-low">Price: High to Low</option>
+  </select>
+</div>
+
+<div class="product-grid" id="product-grid"></div>
+
+<div id="cart">
+  <h2>Your Cart</h2>
+  <ul id="cart-items"></ul>
+  <h3 id="total">Total: ₹0.00</h3>
+  <button id="pay-btn" onclick="makePayment()" disabled>Pay with Razorpay</button>
+</div>
+
+<script>
+const products = [
+  { name: 'Canvas Sneakers', price: 799, img: 'https://m.media-amazon.com/images/I/71CkF8D2-6L._UY625_.jpg', category: 'shoes', desc: 'Comfortable canvas sneakers for daily use.' },
+  { name: 'Running Shoes', price: 999, img: 'https://m.media-amazon.com/images/I/61ZtoXHnFZL._UY625_.jpg', category: 'shoes', desc: 'Lightweight running shoes for athletes.' },
+  { name: 'Smartphone', price: 14999, img: 'https://m.media-amazon.com/images/I/81zN3r1nZUL._SL1500_.jpg', category: 'mobile', desc: 'Powerful smartphone with latest features.' },
+  { name: 'LED TV', price: 25999, img: 'https://m.media-amazon.com/images/I/81rjJwN9kEL._SL1500_.jpg', category: 'tv', desc: 'High-definition LED television.' },
+  { name: 'Window AC', price: 18999, img: 'https://m.media-amazon.com/images/I/61VbKHdE3XL._SL1500_.jpg', category: 'ac', desc: 'Energy efficient window air conditioner.' },
+  { name: 'Double Door Fridge', price: 20999, img: 'https://m.media-amazon.com/images/I/71FcO+3DGZL._SL1500_.jpg', category: 'fridge', desc: 'Spacious and efficient refrigerator.' },
+  { name: 'Air Cooler', price: 5999, img: 'https://m.media-amazon.com/images/I/71xXp+9MbpL._SL1500_.jpg', category: 'cooler', desc: 'Portable cooler for hot summer days.' },
+  { name: 'Bluetooth Speaker', price: 2499, img: 'https://m.media-amazon.com/images/I/71q4cN8JpZL._SL1500_.jpg', category: 'speakers', desc: 'Wireless Bluetooth speaker with deep bass.' },
+  { name: 'Wireless Headphones', price: 1999, img: 'https://m.media-amazon.com/images/I/61nPiOOv9BL._SL1500_.jpg', category: 'headphones', desc: 'Comfortable wireless headphones.' }
+];
+
+let cart = [];
+
+function renderProducts(filtered = products) {
+  const grid = document.getElementById('product-grid');
+  grid.innerHTML = '';
+
+  filtered.forEach(product => {
+    for (let i = 1; i <= 10; i++) {
+      const dynamicPrice = product.price + i * 10;
+      const dynamicProduct = { ...product, name: `${product.name} ${i}`, price: dynamicPrice };
+      const div = document.createElement('div');
+      div.className = 'product';
+      div.innerHTML = `
+        <div class="tooltip">${product.desc}</div>
+        <img src="${product.img}" alt="${product.name} ${i}">
+        <h4>${product.name} ${i}</h4>
+        <p class="price">₹${dynamicPrice}</p>
+        <button class="add-cart-btn" onclick='addToCart(${JSON.stringify(dynamicProduct)})'>Add to Cart</button>
+      `;
+      grid.appendChild(div);
+    }
+  });
+}
+
+function filterProducts() {
+  const search = document.getElementById('search-bar').value.toLowerCase();
+  const category = document.getElementById('category-filter').value;
+  let filtered = products.filter(p => 
+    (category === 'all' || p.category === category) &&
+    p.name.toLowerCase().includes(search)
+  );
+
+  const sortBy = document.getElementById('sort-by').value;
+  if (sortBy === 'low-high') filtered.sort((a, b) => a.price - b.price);
+  else if (sortBy === 'high-low') filtered.sort((a, b) => b.price - a.price);
+
+  renderProducts(filtered);
+}
+
+function sortProducts() {
+  filterProducts();
+}
+
+function addToCart(product) {
+  const existing = cart.find(item => item.name === product.name);
+  if (existing) {
+    existing.qty++;
+  } else {
+    cart.push({ ...product, qty: 1 });
+  }
+  updateCart();
+}
+
+function updateCart() {
+  const cartItems = document.getElementById('cart-items');
+  cartItems.innerHTML = '';
+  let total = 0;
+
+  cart.forEach(item => {
+    total += item.price * item.qty;
+    const li = document.createElement('li');
+    li.className = 'cart-item';
+    li.innerHTML = `
+      <span class="cart-item-name">${item.name}</span>
+      <div class="qty-controls">
+        <button onclick="changeQty('${item.name}', -1)">-</button>
+        <span>${item.qty}</span>
+        <button onclick="changeQty('${item.name}', 1)">+</button>
+      </div>
+      <span class="cart-item-price">₹${item.price * item.qty}</span>
+      <button class="remove-btn" onclick="removeFromCart('${item.name}')">x</button>
+    `;
+    cartItems.appendChild(li);
+  });
+
+  document.getElementById('total').textContent = `Total: ₹${total.toFixed(2)}`;
+  document.getElementById('pay-btn').disabled = cart.length === 0;
+}
+
+function changeQty(name, delta) {
+  const item = cart.find(p => p.name === name);
+  if (!item) return;
+  item.qty += delta;
+  if (item.qty <= 0) cart = cart.filter(p => p.name !== name);
+  updateCart();
+}
+
+function removeFromCart(name) {
+  cart = cart.filter(p => p.name !== name);
+  updateCart();
+}
+
+function makePayment() {
+  alert('Payment gateway triggered! Integrate Razorpay here.');
+}
+
+renderProducts();
+</script>
+</body>
+</html>

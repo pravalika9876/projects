@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Shoe Store - Mini Amazon</title>
+  <style>
+    body {
+      font-family: Arial;
+      margin: 20px;
+    }
+    .product-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .product {
+      border: 1px solid #ccc;
+      padding: 10px;
+      width: 200px;
+    }
+    .product img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+    }
+    #cart {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 300px;
+      background: #f8f8f8;
+      padding: 10px;
+      border: 1px solid #aaa;
+    }
+    #cart-items {
+      list-style: none;
+      padding: 0;
+    }
+    .cart-item {
+      display: flex;
+      justify-content: space-between;
+    }
+    #search-bar {
+      margin-bottom: 20px;
+      width: 300px;
+      padding: 8px;
+    }
+  </style>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+
+<h1>🥿 Shoe Store</h1>
+
+<input type="text" id="search-bar" placeholder="Search products..." oninput="filterProducts()" />
+
+<div class="product-grid" id="product-grid"></div>
+
+<div id="cart">
+  <h2>Your Cart</h2>
+  <ul id="cart-items"></ul>
+  <h3 id="total">Total: ₹0.00</h3>
+  <button onclick="makePayment()">Pay with Razorpay</button>
+</div>
+
+<script>
+  const products = [
+    { name: 'Canvas Sneakers', price: 799, img: 'https://via.placeholder.com/200?text=Canvas+Sneakers' },
+    { name: 'Basic Running Shoes', price: 999, img: 'https://via.placeholder.com/200?text=Running+Shoes' },
+    { name: 'Leather Loafers', price: 1499, img: 'https://via.placeholder.com/200?text=Leather+Loafers' },
+    { name: 'Trail Running Shoes', price: 1999, img: 'https://via.placeholder.com/200?text=Trail+Shoes' },
+    { name: 'Nike Revolution 6', price: 2499, img: 'https://via.placeholder.com/200?text=Nike+Revolution' },
+    { name: 'Adidas Lite Racer', price: 2999, img: 'https://via.placeholder.com/200?text=Adidas+Lite' },
+    { name: 'Puma Flyer Runner', price: 3299, img: 'https://via.placeholder.com/200?text=Puma+Flyer' },
+    { name: 'ASICS Gel-Contend', price: 3599, img: 'https://via.placeholder.com/200?text=ASICS+Gel' },
+    { name: 'Reebok Zig Kinetica', price: 3999, img: 'https://via.placeholder.com/200?text=Reebok+Zig' },
+    { name: 'Nike Air Max', price: 5499, img: 'https://via.placeholder.com/200?text=Nike+Air+Max' }
+  ];
+
+  products.sort((a, b) => a.price - b.price);
+
+  let cart = [];
+
+  function renderProducts(list = products) {
+    const grid = document.getElementById('product-grid');
+    grid.innerHTML = '';
+    list.forEach(product => {
+      const div = document.createElement('div');
+      div.className = 'product';
+      div.innerHTML = `
+        <img src="${product.img}" />
+        <h4>${product.name}</h4>
+        <p>Price: ₹${product.price}</p>
+        <button onclick="addToCart('${product.name}', ${product.price})">Add to Cart</button>
+      `;
+      grid.appendChild(div);
+    });
+  }
+
+  function addToCart(name, price) {
+    const existing = cart.find(item => item.name === name);
+    if (existing) {
+      existing.qty++;
+    } else {
+      cart.push({ name, price, qty: 1 });
+    }
+    updateCart();
+  }
+
+  function updateCart() {
+    const cartList = document.getElementById('cart-items');
+    const totalEl = document.getElementById('total');
+    cartList.innerHTML = '';
+    let total = 0;
+
+    cart.forEach(item => {
+      total += item.price * item.qty;
+      const li = document.createElement('li');
+      li.className = 'cart-item';
+      li.innerHTML = `
+        <span>${item.name} x${item.qty}</span>
+        <span>₹${item.price * item.qty}</span>
+      `;
+      cartList.appendChild(li);
+    });
+
+    totalEl.innerText = `Total: ₹${total.toFixed(2)}`;
+  }
+
+  function makePayment() {
+    let totalAmount = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+
+    if (totalAmount === 0) {
+      alert("Cart is empty");
+      return;
+    }
+
+    const options = {
+      "key": "rzp_test_YourKeyHere", // Replace with your Razorpay Key ID
+      "amount": totalAmount * 100,
+      "currency": "INR",
+      "name": "Shoe Store",
+      "description": "Purchase",
+      "handler": function (response) {
+        alert(`Payment Successful!\nPayment ID: ${response.razorpay_payment_id}`);
+        cart = [];
+        updateCart();
+      },
+      "theme": { "color": "#3399cc" }
+    };
+    const rzp = new Razorpay(options);
+    rzp.open();
+  }
+
+  function filterProducts() {
+    const query = document.getElementById('search-bar').value.toLowerCase();
+    const filtered = products.filter(p => p.name.toLowerCase().includes(query));
+    renderProducts(filtered);
+  }
+
+  // Initial render
+  renderProducts();
+</script>
+
+</body>
+</html>
